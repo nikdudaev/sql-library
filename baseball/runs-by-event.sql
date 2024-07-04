@@ -1,4 +1,4 @@
-create table re_batting.events_run_value_1912_2023 as
+create table run_expectancy.events_run_value as
 with basis as (
   select *
   from run_expectancy.full_rv_1912_2023
@@ -89,7 +89,7 @@ sac_bunt as (
 		 round(avg(runs_roi), 3) as "Average Runs",
          round(avg(rv_start), 3) as "Starting RE"
   from basis
-  where bunt_fl = 'T' and sh_fl = 'T'
+  where bunt_fl = 'T' and outs_ct < 2 and not bases in ('000')
   group by season
 ),
 bunt as (
@@ -100,7 +100,7 @@ bunt as (
 		 round(avg(runs_roi), 3) as "Average Runs",
          round(avg(rv_start), 3) as "Starting RE"
   from basis
-  where bunt_fl = 'T'
+  where bunt_fl = 'T' and not (outs_ct < 2 and not bases in ('000'))
   group by season
 ),
 wild_pitch as (

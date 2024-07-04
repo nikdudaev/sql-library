@@ -132,7 +132,45 @@ select main.*,
 from full_prv_state main
 left join run_expectancy.matrix_1912_2023 matrix on main.season = matrix.season and main.new_state = matrix.state;
 
+create table run_expectancy.re24 as
+with re_matrix_long as (
+	SELECT season,
+	  case
+	    when bases = '000' THEN 1
+	    when bases = '100' THEN 2
+	    when bases = '010' THEN 3
+	    when bases = '001' THEN 4
+	    when bases = '110' THEN 5
+	    when bases = '101' THEN 6
+	    when bases = '011' THEN 7
+	    when bases = '111' THEN 8
+	   end as bases_state_order,
+	   case
+	    when bases = '000' THEN '-- -- --'
+	    when bases = '100' THEN '1B -- --'
+	    when bases = '010' THEN '-- 2B --'
+	    when bases = '001' THEN '-- -- 3B'
+	    when bases = '110' THEN '1B 2B --'
+	    when bases = '101' THEN '1B -- 3B'
+	    when bases = '011' THEN '-- 2B 3B'
+	    when bases = '111' THEN '1B 2B 3B'
+	   end as bases,
+	   cast(cast(outs_ct as int) as text) as outs_ct,
+	   round(avg(runs_roi),3) as mean_run_value
+   FROM run_expectancy.final_pre_1912_2023
+   where inn_ct <= 9.0 and not (inn_ct = 9.0 and bat_home_id = '1')
+   group by season, bases, cast(cast(outs_ct as int) as text)
+	)
+select season,
+	bases_state_order,
+	bases,
+	max(case when outs_ct = '0' then mean_run_value else 0 end) as "0 Outs",
+	max(case when outs_ct = '1' then mean_run_value else 0 end) as "1 Out",
+	max(case when outs_ct = '2' then mean_run_value else 0 end) as "2 Outs"
+from re_matrix_long
+group by season, bases, bases_state_order
+order by season, bases_state_order;
+
 drop table run_expectancy.pre_1912_2023 cascade;
-drop table run_expectancy.matrix_1912_2023 cascade;
 drop table run_expectancy.final_pre_1912_2023 cascade;
 drop table run_expectancy.source_1912_2023 cascade;
