@@ -6,10 +6,11 @@ with basis as (
 ),
 runs_scored as (
   select season,
+         cast(cast(inn_ct as int) as text) as inn_ct,
          "state" as base_out_state,
          sum(runs_scored) as runs_scored
   from basis
-  group by season, "state"
+  group by season, "state", inn_ct
 ),
 plate_appearances as (
   select season,
@@ -197,7 +198,7 @@ for_calculations as (
 )
 select *,
       case 
-	      when base_out_state = '000 0' then '-- -- -- 0 outs'
+	    when base_out_state = '000 0' then '-- -- -- 0 outs'
         when base_out_state = '000 1' then '-- -- -- 1 outs'
         when base_out_state = '000 2' then '-- -- -- 2 outs'
         when base_out_state = '001 0' then '-- -- 3B 0 outs'
@@ -287,11 +288,17 @@ select *,
 	          2 * cast(doubles as numeric) +
 			      3 * cast(triples as numeric) +
 			      4 * cast(homeruns as numeric)) / cast(at_bats as numeric),3) as slg,
-      round((cast(hits as numeric) -cast(homeruns as numeric)) / 
+	     case
+		   when (cast(at_bats as numeric) -
+	           cast(strikeouts as numeric) - 
+		         cast(homeruns as numeric) +
+		         cast(sac_fly as numeric)) > 0 then round((cast(hits as numeric) - cast(homeruns as numeric)) / 
 	          (cast(at_bats as numeric) -
 	           cast(strikeouts as numeric) - 
 		         cast(homeruns as numeric) +
-		         cast(sac_fly as numeric)),3) as babip,
+		         cast(sac_fly as numeric)),3)
+		   else 0.0 
+		 end as babip,
 		  round(cast(strikeouts as numeric) / cast(pa_s as numeric), 3) as strikeouts_pct,
 		  round(cast(walks as numeric) / cast(pa_s as numeric), 3) as walks_pct,
 		  (round((cast(hits as numeric) + 
