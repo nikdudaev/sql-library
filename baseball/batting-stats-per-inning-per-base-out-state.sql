@@ -4,11 +4,11 @@ with basis as (
   from run_expectancy.full_rv_1912_2023
   --where inn_ct <= 9.0 and not (inn_ct = 9.0 and bat_home_id = '1')
 ),
-runs_scored as (
+event_runs_scored as (
   select season,
          cast(cast(inn_ct as int) as text) as inn_ct,
          "state" as base_out_state,
-         sum(runs_scored) as runs_scored
+         cast(sum(event_runs_ct) as int) as event_runs_scored
   from basis
   group by season, "state", inn_ct
 ),
@@ -163,7 +163,7 @@ for_calculations as (
   select ab.season,
          ab.inn_ct,
          ab.base_out_state,
-         coalesce(rs.runs_scored, 0) as runs_scored,
+		 coalesce(ers.event_runs_scored, 0) as event_runs_scored,
 		 coalesce(pa.pa_s, 0) as pa_s,
          coalesce(ab.at_bats, 0) as at_bats,
 	     coalesce(h.hits, 0) as hits,
@@ -181,7 +181,7 @@ for_calculations as (
          coalesce(pp.popups, 0) as popups
   from at_bats ab
   left join plate_appearances pa on ab.season = pa.season and ab.base_out_state = pa.base_out_state and ab.inn_ct = pa.inn_ct
-  left join runs_scored rs on ab.season = rs.season and ab.base_out_state = rs.base_out_state
+  left join event_runs_scored ers on ab.season = ers.season and ab.base_out_state = ers.base_out_state and ab.inn_ct = ers.inn_ct
   left join hits h on ab.season = h.season and ab.base_out_state = h.base_out_state and ab.inn_ct = h.inn_ct 
   left join walks w on ab.season = w.season and ab.base_out_state = w.base_out_state and ab.inn_ct = w.inn_ct
   left join hit_by_pitch hbp on ab.season = hbp.season and ab.base_out_state = hbp.base_out_state and ab.inn_ct = hbp.inn_ct
