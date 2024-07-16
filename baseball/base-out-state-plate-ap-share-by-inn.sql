@@ -48,6 +48,5 @@ select season,
        max(case when base_out_state = '111 0' then bo_state_pa_pct else 0 end) as "1B 2B 3B 0 outs",
        max(case when base_out_state = '111 1' then bo_state_pa_pct else 0 end) as "1B 2B 3B 1 outs",
        max(case when base_out_state = '111 2' then bo_state_pa_pct else 0 end) as "1B 2B 3B 2 outs"
-
 from combined
 group by season, inn_ct;

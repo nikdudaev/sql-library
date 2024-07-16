@@ -225,3 +225,34 @@ select *,
 		(round(cast(hits as numeric) / 
 	   cast(at_bats as numeric),3)) as iso
 from for_calculations;
+
+alter table re_batting.batting_stats_per_inning_base_out_state 
+add column base_out_state_tx text;
+
+update re_batting.batting_stats_per_inning_base_out_state 
+set base_out_state_tx = case 
+	                        when base_out_state = '000 0' then '-- -- -- 0 outs'
+                          when base_out_state = '000 1' then '-- -- -- 1 outs'
+                          when base_out_state = '000 2' then '-- -- -- 2 outs'
+                          when base_out_state = '001 0' then '-- -- 3B 0 outs'
+                          when base_out_state = '001 1' then '-- -- 3B 1 outs'
+                          when base_out_state = '001 2' then '-- -- 3B 2 outs'
+                          when base_out_state = '010 0' then '-- 2B -- 0 outs'
+                          when base_out_state = '010 1' then '-- 2B -- 1 outs'
+                          when base_out_state = '010 2' then '-- 2B -- 2 outs'
+                          when base_out_state = '011 0' then '-- 2B 3B 0 outs'
+                          when base_out_state = '011 1' then '-- 2B 3B 1 outs'
+                          when base_out_state = '011 2' then '-- 2B 3B 2 outs'
+                          when base_out_state = '100 0' then '1B -- -- 0 outs'
+                          when base_out_state = '100 1' then '1B -- -- 1 outs'
+                          when base_out_state = '100 2' then '1B -- -- 2 outs'
+                          when base_out_state = '101 0' then '1B -- 3B 0 outs'
+                          when base_out_state = '101 1' then '1B -- 3B 1 outs'
+                          when base_out_state = '101 2' then '1B -- 3B 2 outs'
+                          when base_out_state = '110 0' then '1B 2B -- 0 outs'
+                          when base_out_state = '110 1' then '1B 2B -- 1 outs'
+                          when base_out_state = '110 2' then '1B 2B -- 2 outs'
+                          when base_out_state = '111 0' then '1B 2B 3B 0 outs'
+                          when base_out_state = '111 1' then '1B 2B 3B 1 outs'
+                          when base_out_state = '111 2' then '1B 2B 3B 2 outs'
+                        end;
