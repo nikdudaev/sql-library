@@ -50,3 +50,97 @@ select season,
        max(case when base_out_state = '111 2' then bo_state_pa_pct else 0 end) as "1B 2B 3B 2 outs"
 from combined
 group by season, inn_ct;
+
+alter table re_batting.batting_stats_per_inning_base_out_state
+add column "Base/Out Situation" text;
+
+update re_batting.batting_stats_per_inning_base_out_state
+set "Base/Out Situation" = case 
+  when base_out_state_tx = '-- -- -- 0 outs' then 'Bases Empty'
+  when base_out_state_tx = '-- -- -- 1 outs' then 'Bases Empty'
+  when base_out_state_tx = '-- -- -- 2 outs' then 'Bases Empty'
+  when base_out_state_tx = '-- -- 3B 0 outs' then 'RISP (excl. Bases Loaded)'
+  when base_out_state_tx = '-- -- 3B 1 outs' then 'RISP (excl. Bases Loaded)'
+  when base_out_state_tx = '-- -- 3B 2 outs' then 'RISP (excl. Bases Loaded)'
+  when base_out_state_tx = '-- 2B -- 0 outs' then 'RISP (excl. Bases Loaded)'
+  when base_out_state_tx = '-- 2B -- 1 outs' then 'RISP (excl. Bases Loaded)'
+  when base_out_state_tx = '-- 2B -- 2 outs' then 'RISP (excl. Bases Loaded)'
+  when base_out_state_tx = '-- 2B 3B 0 outs' then 'RISP (excl. Bases Loaded)'
+  when base_out_state_tx = '-- 2B 3B 1 outs' then 'RISP (excl. Bases Loaded)'
+  when base_out_state_tx = '-- 2B 3B 2 outs' then 'RISP (excl. Bases Loaded)'
+  when base_out_state_tx = '1B -- -- 0 outs' then 'Runner on 1B'
+  when base_out_state_tx = '1B -- -- 1 outs' then 'Runner on 1B'
+  when base_out_state_tx = '1B -- -- 2 outs' then 'Runner on 1B'
+  when base_out_state_tx = '1B -- 3B 0 outs' then 'RISP (excl. Bases Loaded)'
+  when base_out_state_tx = '1B -- 3B 1 outs' then 'RISP (excl. Bases Loaded)'
+  when base_out_state_tx = '1B -- 3B 2 outs' then 'RISP (excl. Bases Loaded)'
+  when base_out_state_tx = '1B 2B -- 0 outs' then 'RISP (excl. Bases Loaded)'
+  when base_out_state_tx = '1B 2B -- 1 outs' then 'RISP (excl. Bases Loaded)'
+  when base_out_state_tx = '1B 2B -- 2 outs' then 'RISP (excl. Bases Loaded)'
+  when base_out_state_tx = '1B 2B 3B 0 outs' then 'Bases Loaded'
+  when base_out_state_tx = '1B 2B 3B 1 outs' then 'Bases Loaded'
+  when base_out_state_tx = '1B 2B 3B 2 outs' then 'Bases Loaded'
+end;
+
+alter table re_batting.batting_stats_per_inning_base_out_state
+rename column "Base/Out Situation" to "Base Situation";
+
+alter table re_batting.batting_stats_per_inning_base_out_state
+add column "Base Situation w/Outs" text,
+add column "Threat Level" text;
+
+update re_batting.batting_stats_per_inning_base_out_state
+set "Base Situation w/Outs" = case 
+  when base_out_state_tx = '-- -- -- 0 outs' then 'Bases Empty w/less than 2 Outs'
+  when base_out_state_tx = '-- -- -- 1 outs' then 'Bases Empty w/less than 2 Outs'
+  when base_out_state_tx = '-- -- -- 2 outs' then 'Bases Empty, 2 Outs'
+  when base_out_state_tx = '-- -- 3B 0 outs' then 'RISP w/less than 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '-- -- 3B 1 outs' then 'RISP w/less than 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '-- -- 3B 2 outs' then 'RISP, 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '-- 2B -- 0 outs' then 'RISP w/less than 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '-- 2B -- 1 outs' then 'RISP w/less than 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '-- 2B -- 2 outs' then 'RISP, 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '-- 2B 3B 0 outs' then 'RISP w/less than 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '-- 2B 3B 1 outs' then 'RISP w/less than 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '-- 2B 3B 2 outs' then 'RISP, 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '1B -- -- 0 outs' then 'Runner on 1B w/less than 2 Outs'
+  when base_out_state_tx = '1B -- -- 1 outs' then 'Runner on 1B w/less than 2 Outs'
+  when base_out_state_tx = '1B -- -- 2 outs' then 'Runner on 1B, 2 Outs'
+  when base_out_state_tx = '1B -- 3B 0 outs' then 'RISP w/less than 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '1B -- 3B 1 outs' then 'RISP w/less than 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '1B -- 3B 2 outs' then 'RISP, 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '1B 2B -- 0 outs' then 'RISP w/less than 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '1B 2B -- 1 outs' then 'RISP w/less than 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '1B 2B -- 2 outs' then 'RISP, 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '1B 2B 3B 0 outs' then 'Bases Loaded w/less than 2 Outs'
+  when base_out_state_tx = '1B 2B 3B 1 outs' then 'Bases Loaded w/less than 2 Outs'
+  when base_out_state_tx = '1B 2B 3B 2 outs' then 'Bases Loaded, 2 Outs'
+end;
+
+update re_batting.batting_stats_per_inning_base_out_state
+set "Threat Level" = case 
+  when base_out_state_tx = '-- -- -- 0 outs' then 'No threat'
+  when base_out_state_tx = '-- -- -- 1 outs' then '0'
+  when base_out_state_tx = '-- -- -- 2 outs' then '0'
+  when base_out_state_tx = '-- -- 3B 0 outs' then 'RISP w/less than 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '-- -- 3B 1 outs' then 'RISP w/less than 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '-- -- 3B 2 outs' then 'RISP, 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '-- 2B -- 0 outs' then 'RISP w/less than 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '-- 2B -- 1 outs' then 'RISP w/less than 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '-- 2B -- 2 outs' then 'RISP, 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '-- 2B 3B 0 outs' then 'RISP w/less than 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '-- 2B 3B 1 outs' then 'RISP w/less than 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '-- 2B 3B 2 outs' then 'RISP, 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '1B -- -- 0 outs' then 'Very Low'
+  when base_out_state_tx = '1B -- -- 1 outs' then 'Very Low'
+  when base_out_state_tx = '1B -- -- 2 outs' then 'Very Low'
+  when base_out_state_tx = '1B -- 3B 0 outs' then 'RISP w/less than 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '1B -- 3B 1 outs' then 'RISP w/less than 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '1B -- 3B 2 outs' then 'RISP, 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '1B 2B -- 0 outs' then 'RISP w/less than 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '1B 2B -- 1 outs' then 'RISP w/less than 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '1B 2B -- 2 outs' then 'RISP, 2 Outs (excl. Bases Loaded)'
+  when base_out_state_tx = '1B 2B 3B 0 outs' then 'Bases Loaded w/less than 2 Outs'
+  when base_out_state_tx = '1B 2B 3B 1 outs' then 'Bases Loaded w/less than 2 Outs'
+  when base_out_state_tx = '1B 2B 3B 2 outs' then 'Bases Loaded, 2 Outs'
+end;
