@@ -2,7 +2,14 @@ create table re_batting.batting_stats_per_inning_base_out_state as
 with basis as (
   select *
   from run_expectancy.full_rv_1912_2023
-  where inn_ct <= 9.0 and not (inn_ct = 9.0 and bat_home_id = '1')
+  --where inn_ct <= 9.0 and not (inn_ct = 9.0 and bat_home_id = '1')
+),
+runs_scored as (
+  select season,
+         "state" as base_out_state,
+         sum(runs_scored) as runs_scored
+  from basis
+  group by season, "state"
 ),
 plate_appearances as (
   select season,
@@ -155,6 +162,7 @@ for_calculations as (
   select ab.season,
          ab.inn_ct,
          ab.base_out_state,
+         coalesce(rs.runs_scored, 0) as runs_scored,
 		 coalesce(pa.pa_s, 0) as pa_s,
          coalesce(ab.at_bats, 0) as at_bats,
 	     coalesce(h.hits, 0) as hits,
@@ -172,6 +180,7 @@ for_calculations as (
          coalesce(pp.popups, 0) as popups
   from at_bats ab
   left join plate_appearances pa on ab.season = pa.season and ab.base_out_state = pa.base_out_state and ab.inn_ct = pa.inn_ct
+  left join runs_scored rs on ab.season = rs.season and ab.base_out_state = rs.base_out_state
   left join hits h on ab.season = h.season and ab.base_out_state = h.base_out_state and ab.inn_ct = h.inn_ct 
   left join walks w on ab.season = w.season and ab.base_out_state = w.base_out_state and ab.inn_ct = w.inn_ct
   left join hit_by_pitch hbp on ab.season = hbp.season and ab.base_out_state = hbp.base_out_state and ab.inn_ct = hbp.inn_ct
@@ -187,72 +196,119 @@ for_calculations as (
   left join popups pp on ab.season = pp.season and ab.base_out_state = pp.base_out_state and ab.inn_ct = pp.inn_ct
 )
 select *,
-       round(cast(hits as numeric) / 
-	   cast(at_bats as numeric),3) as "avg",
-       round((cast(hits as numeric) + 
-		cast(walks as numeric) + 
-		cast(hit_by_pitch as numeric)) / 
-	   (cast(at_bats as numeric) + 
-		cast(walks as numeric) + 
-		cast(hit_by_pitch as numeric) + 
-		cast(sac_fly as numeric)),3) as obp,
-        round((cast(singles as numeric) +
+      case 
+	      when base_out_state = '000 0' then '-- -- -- 0 outs'
+        when base_out_state = '000 1' then '-- -- -- 1 outs'
+        when base_out_state = '000 2' then '-- -- -- 2 outs'
+        when base_out_state = '001 0' then '-- -- 3B 0 outs'
+        when base_out_state = '001 1' then '-- -- 3B 1 outs'
+        when base_out_state = '001 2' then '-- -- 3B 2 outs'
+        when base_out_state = '010 0' then '-- 2B -- 0 outs'
+        when base_out_state = '010 1' then '-- 2B -- 1 outs'
+        when base_out_state = '010 2' then '-- 2B -- 2 outs'
+        when base_out_state = '011 0' then '-- 2B 3B 0 outs'
+        when base_out_state = '011 1' then '-- 2B 3B 1 outs'
+        when base_out_state = '011 2' then '-- 2B 3B 2 outs'
+        when base_out_state = '100 0' then '1B -- -- 0 outs'
+        when base_out_state = '100 1' then '1B -- -- 1 outs'
+        when base_out_state = '100 2' then '1B -- -- 2 outs'
+        when base_out_state = '101 0' then '1B -- 3B 0 outs'
+        when base_out_state = '101 1' then '1B -- 3B 1 outs'
+        when base_out_state = '101 2' then '1B -- 3B 2 outs'
+        when base_out_state = '110 0' then '1B 2B -- 0 outs'
+        when base_out_state = '110 1' then '1B 2B -- 1 outs'
+        when base_out_state = '110 2' then '1B 2B -- 2 outs'
+        when base_out_state = '111 0' then '1B 2B 3B 0 outs'
+        when base_out_state = '111 1' then '1B 2B 3B 1 outs'
+        when base_out_state = '111 2' then '1B 2B 3B 2 outs'
+      end as base_out_state_tx,
+      case 
+	      when base_out_state = '000 0' then 'Bases empty'
+        when base_out_state = '000 1' then 'Bases empty'
+        when base_out_state = '000 2' then 'Bases empty'
+        when base_out_state = '001 0' then 'RISP (excl. Bases loaded)'
+        when base_out_state = '001 1' then 'RISP (excl. Bases loaded)'
+        when base_out_state = '001 2' then 'RISP (excl. Bases loaded)'
+        when base_out_state = '010 0' then 'RISP (excl. Bases loaded)'
+        when base_out_state = '010 1' then 'RISP (excl. Bases loaded)'
+        when base_out_state = '010 2' then 'RISP (excl. Bases loaded)'
+        when base_out_state = '011 0' then 'RISP (excl. Bases loaded)'
+        when base_out_state = '011 1' then 'RISP (excl. Bases loaded)'
+        when base_out_state = '011 2' then 'RISP (excl. Bases loaded)'
+        when base_out_state = '100 0' then 'Runner on 1B'
+        when base_out_state = '100 1' then 'Runner on 1B'
+        when base_out_state = '100 2' then 'Runner on 1B'
+        when base_out_state = '101 0' then 'RISP (excl. Bases loaded)'
+        when base_out_state = '101 1' then 'RISP (excl. Bases loaded)'
+        when base_out_state = '101 2' then 'RISP (excl. Bases loaded)'
+        when base_out_state = '110 0' then 'RISP (excl. Bases loaded)'
+        when base_out_state = '110 1' then 'RISP (excl. Bases loaded)'
+        when base_out_state = '110 2' then 'RISP (excl. Bases loaded)'
+        when base_out_state = '111 0' then 'Bases loaded'
+        when base_out_state = '111 1' then 'Bases loaded'
+        when base_out_state = '111 2' then 'Bases loaded'
+      end as base_situation,
+      case 
+	      when base_out_state = '000 0' then 'Bases empty, < 2 outs'
+        when base_out_state = '000 1' then 'Bases empty, < 2 outs'
+        when base_out_state = '000 2' then 'Bases empty, 2 outs'
+        when base_out_state = '001 0' then 'RISP, < 2 outs (excl. Bases loaded)'
+        when base_out_state = '001 1' then 'RISP, < 2 outs (excl. Bases loaded)'
+        when base_out_state = '001 2' then 'RISP, 2 outs (excl. Bases loaded)'
+        when base_out_state = '010 0' then 'RISP, < 2 outs (excl. Bases loaded)'
+        when base_out_state = '010 1' then 'RISP, < 2 outs (excl. Bases loaded)'
+        when base_out_state = '010 2' then 'RISP, 2 outs (excl. Bases loaded)'
+        when base_out_state = '011 0' then 'RISP, < 2 outs (excl. Bases loaded)'
+        when base_out_state = '011 1' then 'RISP, < 2 outs (excl. Bases loaded)'
+        when base_out_state = '011 2' then 'RISP, 2 outs (excl. Bases loaded)'
+        when base_out_state = '100 0' then 'Runner on 1B, < 2 outs'
+        when base_out_state = '100 1' then 'Runner on 1B, < 2 outs'
+        when base_out_state = '100 2' then 'Runner on 1B, 2 outs'
+        when base_out_state = '101 0' then 'RISP, < 2 outs (excl. Bases loaded)'
+        when base_out_state = '101 1' then 'RISP, < 2 outs (excl. Bases loaded)'
+        when base_out_state = '101 2' then 'RISP, 2 outs (excl. Bases loaded)'
+        when base_out_state = '110 0' then 'RISP, < 2 outs (excl. Bases loaded)'
+        when base_out_state = '110 1' then 'RISP, < 2 outs (excl. Bases loaded)'
+        when base_out_state = '110 2' then 'RISP, 2 outs (excl. Bases loaded)'
+        when base_out_state = '111 0' then 'Bases loaded, < 2 outs'
+        when base_out_state = '111 1' then 'Bases loaded, < 2 outs'
+        when base_out_state = '111 2' then 'Bases loaded, 2 outs'
+      end as base_situation_with_outs,
+      round(cast(hits as numeric) / 
+	    cast(at_bats as numeric),3) as "avg",
+      round((cast(hits as numeric) + 
+		         cast(walks as numeric) + 
+		         cast(hit_by_pitch as numeric)) / 
+	          (cast(at_bats as numeric) + 
+		         cast(walks as numeric) + 
+		         cast(hit_by_pitch as numeric) + 
+		         cast(sac_fly as numeric)),3) as obp,
+      round((cast(singles as numeric) +
 	          2 * cast(doubles as numeric) +
-			  3 * cast(triples as numeric) +
-			  4 * cast(homeruns as numeric)) / cast(at_bats as numeric),3) as slg,
-        round((cast(hits as numeric) -cast(homeruns as numeric)) / 
-	   (cast(at_bats as numeric) -
-	    cast(strikeouts as numeric) - 
-		cast(homeruns as numeric) +
-		cast(sac_fly as numeric)),3) as babip,
-		round(cast(strikeouts as numeric) / cast(pa_s as numeric), 3) as strikeouts_pct,
-		round(cast(walks as numeric) / cast(pa_s as numeric), 3) as walks_pct,
-		(round((cast(hits as numeric) + 
-		cast(walks as numeric) + 
-		cast(hit_by_pitch as numeric)) / 
-	   (cast(at_bats as numeric) + 
-		cast(walks as numeric) + 
-		cast(hit_by_pitch as numeric) + 
-		cast(sac_fly as numeric)),3)) + 
-		(round((cast(singles as numeric) +
+			      3 * cast(triples as numeric) +
+			      4 * cast(homeruns as numeric)) / cast(at_bats as numeric),3) as slg,
+      round((cast(hits as numeric) -cast(homeruns as numeric)) / 
+	          (cast(at_bats as numeric) -
+	           cast(strikeouts as numeric) - 
+		         cast(homeruns as numeric) +
+		         cast(sac_fly as numeric)),3) as babip,
+		  round(cast(strikeouts as numeric) / cast(pa_s as numeric), 3) as strikeouts_pct,
+		  round(cast(walks as numeric) / cast(pa_s as numeric), 3) as walks_pct,
+		  (round((cast(hits as numeric) + 
+		          cast(walks as numeric) + 
+		          cast(hit_by_pitch as numeric)) / 
+	           (cast(at_bats as numeric) + 
+		          cast(walks as numeric) + 
+		          cast(hit_by_pitch as numeric) + 
+		          cast(sac_fly as numeric)),3)) + 
+		  (round((cast(singles as numeric) +
 	          2 * cast(doubles as numeric) +
-			  3 * cast(triples as numeric) +
-			  4 * cast(homeruns as numeric)) / cast(at_bats as numeric),3)) as ops,
-		(round((cast(singles as numeric) +
+			      3 * cast(triples as numeric) +
+			      4 * cast(homeruns as numeric)) / cast(at_bats as numeric),3)) as ops,
+		  (round((cast(singles as numeric) +
 	          2 * cast(doubles as numeric) +
-			  3 * cast(triples as numeric) +
-			  4 * cast(homeruns as numeric)) / cast(at_bats as numeric),3)) -
-		(round(cast(hits as numeric) / 
-	   cast(at_bats as numeric),3)) as iso
+			      3 * cast(triples as numeric) +
+			      4 * cast(homeruns as numeric)) / cast(at_bats as numeric),3)) -
+		  (round(cast(hits as numeric) / 
+	           cast(at_bats as numeric),3)) as iso
 from for_calculations;
-
-alter table re_batting.batting_stats_per_inning_base_out_state 
-add column base_out_state_tx text;
-
-update re_batting.batting_stats_per_inning_base_out_state 
-set base_out_state_tx = case 
-	                        when base_out_state = '000 0' then '-- -- -- 0 outs'
-                          when base_out_state = '000 1' then '-- -- -- 1 outs'
-                          when base_out_state = '000 2' then '-- -- -- 2 outs'
-                          when base_out_state = '001 0' then '-- -- 3B 0 outs'
-                          when base_out_state = '001 1' then '-- -- 3B 1 outs'
-                          when base_out_state = '001 2' then '-- -- 3B 2 outs'
-                          when base_out_state = '010 0' then '-- 2B -- 0 outs'
-                          when base_out_state = '010 1' then '-- 2B -- 1 outs'
-                          when base_out_state = '010 2' then '-- 2B -- 2 outs'
-                          when base_out_state = '011 0' then '-- 2B 3B 0 outs'
-                          when base_out_state = '011 1' then '-- 2B 3B 1 outs'
-                          when base_out_state = '011 2' then '-- 2B 3B 2 outs'
-                          when base_out_state = '100 0' then '1B -- -- 0 outs'
-                          when base_out_state = '100 1' then '1B -- -- 1 outs'
-                          when base_out_state = '100 2' then '1B -- -- 2 outs'
-                          when base_out_state = '101 0' then '1B -- 3B 0 outs'
-                          when base_out_state = '101 1' then '1B -- 3B 1 outs'
-                          when base_out_state = '101 2' then '1B -- 3B 2 outs'
-                          when base_out_state = '110 0' then '1B 2B -- 0 outs'
-                          when base_out_state = '110 1' then '1B 2B -- 1 outs'
-                          when base_out_state = '110 2' then '1B 2B -- 2 outs'
-                          when base_out_state = '111 0' then '1B 2B 3B 0 outs'
-                          when base_out_state = '111 1' then '1B 2B 3B 1 outs'
-                          when base_out_state = '111 2' then '1B 2B 3B 2 outs'
-                        end;

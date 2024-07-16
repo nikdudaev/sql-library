@@ -2,7 +2,14 @@ create table re_batting.batting_stats_base_out_state as
 with basis as (
   select *
   from run_expectancy.full_rv_1912_2023
-  where inn_ct <= 9.0 and not (inn_ct = 9.0 and bat_home_id = '1')
+  --where inn_ct <= 9.0 and not (inn_ct = 9.0 and bat_home_id = '1')
+),
+runs_scored as (
+  select season,
+         "state" as base_out_state,
+         sum(runs_scored) as runs_scored
+  from basis
+  group by season, "state"
 ),
 plate_appearances as (
   select season,
@@ -139,7 +146,8 @@ popups as (
 for_calculations as (
   select ab.season,
          ab.base_out_state,
-		 coalesce(pa.pa_s, 0) as pa_s,
+         coalesce(rs.runs_scored, 0) as runs_scored,
+		     coalesce(pa.pa_s, 0) as pa_s,
          coalesce(ab.at_bats, 0) as at_bats,
 	     coalesce(h.hits, 0) as hits,
 	     coalesce(w.walks, 0) as walks,
@@ -156,6 +164,7 @@ for_calculations as (
          coalesce(pp.popups, 0) as popups
   from at_bats ab
   left join plate_appearances pa on ab.season = pa.season and ab.base_out_state = pa.base_out_state
+  left join runs_scored rs on ab.season = rs.season and ab.base_out_state = rs.base_out_state
   left join hits h on ab.season = h.season and ab.base_out_state = h.base_out_state
   left join walks w on ab.season = w.season and ab.base_out_state = w.base_out_state
   left join hit_by_pitch hbp on ab.season = hbp.season and ab.base_out_state = hbp.base_out_state
