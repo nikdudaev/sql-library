@@ -4,10 +4,10 @@ with basis as (
   from run_expectancy.full_rv_1912_2023
   --where inn_ct <= 9.0 and not (inn_ct = 9.0 and bat_home_id = '1')
 ),
-runs_scored as (
+event_runs_scored as (
   select season,
          "state" as base_out_state,
-         sum(runs_scored) as runs_scored
+         cast(sum(event_runs_ct) as int) as event_runs_scored
   from basis
   group by season, "state"
 ),
@@ -143,10 +143,46 @@ popups as (
   where battedball_cd = 'P'
   group by season, "state"
 ),
+-- Wild Pitch
+wild_pitch as (
+  select season,
+         "state" as base_out_state,
+         count(*) as wild_pitch
+  from basis
+  where event_cd = '9'
+  group by season, "state"
+),
+-- Passed ball
+passed_ball as (
+  select season,
+         "state" as base_out_state,
+         count(*) as passed_ball
+  from basis
+  where event_cd = '10'
+  group by season, "state"
+),
+-- Stolen Base
+stolen_base as (
+  select season,
+         "state" as base_out_state,
+         count(*) as stolen_base
+  from basis
+  where event_cd = '4'
+  group by season, "state"
+),
+-- Error
+error as (
+  select season,
+         "state" as base_out_state,
+         count(*) as error
+  from basis
+  where event_cd = '18'
+  group by season, "state"
+),
 for_calculations as (
   select ab.season,
          ab.base_out_state,
-         coalesce(rs.runs_scored, 0) as runs_scored,
+         coalesce(ers.event_runs_scored, 0) as event_runs_scored,
 		     coalesce(pa.pa_s, 0) as pa_s,
          coalesce(ab.at_bats, 0) as at_bats,
 	     coalesce(h.hits, 0) as hits,
@@ -161,10 +197,14 @@ for_calculations as (
 		 coalesce(fb.flyballs, 0) as flyballs,
 	     coalesce(gb.groundballs, 0) as groundballs,
 	     coalesce(ld.linedrives, 0) as linedrives,
-         coalesce(pp.popups, 0) as popups
+         coalesce(pp.popups, 0) as popups,
+		 coalesce(wp.wild_pitch, 0) as wild_pitch,
+	     coalesce(sb.stolen_base, 0) as stolen_base,
+         coalesce(pb.passed_ball, 0) as passed_ball,
+		 coalesce(err.error, 0) as error
   from at_bats ab
   left join plate_appearances pa on ab.season = pa.season and ab.base_out_state = pa.base_out_state
-  left join runs_scored rs on ab.season = rs.season and ab.base_out_state = rs.base_out_state
+  left join event_runs_scored ers on ab.season = ers.season and ab.base_out_state = ers.base_out_state
   left join hits h on ab.season = h.season and ab.base_out_state = h.base_out_state
   left join walks w on ab.season = w.season and ab.base_out_state = w.base_out_state
   left join hit_by_pitch hbp on ab.season = hbp.season and ab.base_out_state = hbp.base_out_state
@@ -178,6 +218,10 @@ for_calculations as (
   left join groundballs gb on ab.season = gb.season and ab.base_out_state = gb.base_out_state
   left join linedrives ld on ab.season = ld.season and ab.base_out_state = ld.base_out_state
   left join popups pp on ab.season = pp.season and ab.base_out_state = pp.base_out_state
+  left join wild_pitch wp on ab.season = wp.season and ab.base_out_state = wp.base_out_state
+  left join stolen_base sb on ab.season = sb.season and ab.base_out_state = sb.base_out_state
+  left join passed_ball pb on ab.season = pb.season and ab.base_out_state = pb.base_out_state
+  left join error err on ab.season = err.season and ab.base_out_state = err.base_out_state
 )
 select *,
        round(cast(hits as numeric) / 

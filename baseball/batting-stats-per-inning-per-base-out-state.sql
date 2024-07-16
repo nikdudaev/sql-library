@@ -159,6 +159,46 @@ popups as (
   where battedball_cd = 'P'
   group by season, "state", inn_ct
 ),
+-- Wild Pitch
+wild_pitch as (
+  select season,
+         cast(cast(inn_ct as int) as text) as inn_ct,
+         "state" as base_out_state,
+         count(*) as wild_pitch
+  from basis
+  where event_cd = '9'
+  group by season, "state", inn_ct
+),
+-- Passed ball
+passed_ball as (
+  select season,
+         cast(cast(inn_ct as int) as text) as inn_ct,
+         "state" as base_out_state,
+         count(*) as passed_ball
+  from basis
+  where event_cd = '10'
+  group by season, "state", inn_ct
+),
+-- Stolen Base
+stolen_base as (
+  select season,
+         cast(cast(inn_ct as int) as text) as inn_ct,
+         "state" as base_out_state,
+         count(*) as stolen_base
+  from basis
+  where event_cd = '4'
+  group by season, "state", inn_ct
+),
+-- Error
+error as (
+  select season,
+         cast(cast(inn_ct as int) as text) as inn_ct,
+         "state" as base_out_state,
+         count(*) as error
+  from basis
+  where event_cd = '18'
+  group by season, "state", inn_ct
+),
 for_calculations as (
   select ab.season,
          ab.inn_ct,
@@ -178,7 +218,11 @@ for_calculations as (
 		 coalesce(fb.flyballs, 0) as flyballs,
 	     coalesce(gb.groundballs, 0) as groundballs,
 	     coalesce(ld.linedrives, 0) as linedrives,
-         coalesce(pp.popups, 0) as popups
+         coalesce(pp.popups, 0) as popups,
+		 coalesce(wp.wild_pitch, 0) as wild_pitch,
+	     coalesce(sb.stolen_base, 0) as stolen_base,
+         coalesce(pb.passed_ball, 0) as passed_ball,
+		 coalesce(err.error, 0) as error
   from at_bats ab
   left join plate_appearances pa on ab.season = pa.season and ab.base_out_state = pa.base_out_state and ab.inn_ct = pa.inn_ct
   left join event_runs_scored ers on ab.season = ers.season and ab.base_out_state = ers.base_out_state and ab.inn_ct = ers.inn_ct
@@ -195,6 +239,10 @@ for_calculations as (
   left join groundballs gb on ab.season = gb.season and ab.base_out_state = gb.base_out_state and ab.inn_ct = gb.inn_ct
   left join linedrives ld on ab.season = ld.season and ab.base_out_state = ld.base_out_state and ab.inn_ct = ld.inn_ct
   left join popups pp on ab.season = pp.season and ab.base_out_state = pp.base_out_state and ab.inn_ct = pp.inn_ct
+  left join wild_pitch wp on ab.season = wp.season and ab.base_out_state = wp.base_out_state and ab.inn_ct = wp.inn_ct
+  left join stolen_base sb on ab.season = sb.season and ab.base_out_state = sb.base_out_state and ab.inn_ct = sb.inn_ct
+  left join passed_ball pb on ab.season = pb.season and ab.base_out_state = pb.base_out_state and ab.inn_ct = pb.inn_ct
+  left join error err on ab.season = err.season and ab.base_out_state = err.base_out_state and ab.inn_ct = err.inn_ct
 )
 select *,
       case 
