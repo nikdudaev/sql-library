@@ -367,3 +367,17 @@ select *,
 		  (round(cast(hits as numeric) / 
 	           cast(at_bats as numeric),3)) as iso
 from for_calculations;
+
+alter table re_batting.batting_stats_per_inning_base_out_state
+add column baseball_era text;
+
+update re_batting.batting_stats_per_inning_base_out_state
+set baseball_era = case
+                     when cast(season as int) >= 1912 and cast(season as int) <= 1919 then 'Dead-Ball Era'
+					 when cast(season as int) >= 1920 and cast(season as int) <= 1941 then 'Live-Ball Era'
+					 when cast(season as int) >= 1942 and cast(season as int) <= 1960 then 'Integration Era'
+					 when cast(season as int) >= 1961 and cast(season as int) <= 1976 then 'Expansion Era'
+					 when cast(season as int) >= 1977 and cast(season as int) <= 1993 then 'Free Agency Era'
+					 when cast(season as int) >= 1994 and cast(season as int) <= 2005 then 'Steroid Era'
+					 when cast(season as int) >= 2006 then 'Modern Era'
+				   end;
