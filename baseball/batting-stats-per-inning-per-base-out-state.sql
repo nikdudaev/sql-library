@@ -199,6 +199,35 @@ error as (
   where event_cd = '18'
   group by season, "state", inn_ct
 ),
+-- Event Outs
+event_outs as (
+  select season,
+         cast(cast(inn_ct as int) as text) as inn_ct,
+         "state" as base_out_state,
+         sum(cast(event_outs_ct as int)) as event_outs
+  from basis
+  group by season, "state", inn_ct
+),
+-- Double Plays
+double_plays as (
+  select season,
+         cast(cast(inn_ct as int) as text) as inn_ct,
+         "state" as base_out_state,
+         count(*) as double_plays
+  from basis
+  where dp_fl = 'T'
+  group by season, "state", inn_ct
+),
+-- Triple Plays
+triple_plays as (
+  select season,
+         cast(cast(inn_ct as int) as text) as inn_ct,
+         "state" as base_out_state,
+         count(*) as triple_plays
+  from basis
+  where tp_fl = 'T'
+  group by season, "state", inn_ct
+),
 for_calculations as (
   select ab.season,
          ab.inn_ct,
@@ -222,7 +251,10 @@ for_calculations as (
 		 coalesce(wp.wild_pitch, 0) as wild_pitch,
 	     coalesce(sb.stolen_base, 0) as stolen_base,
          coalesce(pb.passed_ball, 0) as passed_ball,
-		 coalesce(err.error, 0) as error
+		 coalesce(err.error, 0) as error,
+     coalesce(eo.event_outs, 0) as event_outs,
+     coalesce(dp.double_plays, 0) as double_plays,
+     coalesce(tp.triple_plays, 0) as triple_plays
   from at_bats ab
   left join plate_appearances pa on ab.season = pa.season and ab.base_out_state = pa.base_out_state and ab.inn_ct = pa.inn_ct
   left join event_runs_scored ers on ab.season = ers.season and ab.base_out_state = ers.base_out_state and ab.inn_ct = ers.inn_ct
@@ -243,6 +275,9 @@ for_calculations as (
   left join stolen_base sb on ab.season = sb.season and ab.base_out_state = sb.base_out_state and ab.inn_ct = sb.inn_ct
   left join passed_ball pb on ab.season = pb.season and ab.base_out_state = pb.base_out_state and ab.inn_ct = pb.inn_ct
   left join error err on ab.season = err.season and ab.base_out_state = err.base_out_state and ab.inn_ct = err.inn_ct
+  left join event_outs eo on ab.season = eo.season and ab.base_out_state = eo.base_out_state and ab.inn_ct = eo.inn_ct
+  left join double_plays dp on ab.season = dp.season and ab.base_out_state = dp.base_out_state and ab.inn_ct = dp.inn_ct
+  left join triple_plays tp on ab.season = tp.season and ab.base_out_state = tp.base_out_state and ab.inn_ct = tp.inn_ct
 )
 select *,
       case 
@@ -365,14 +400,8 @@ select *,
 			      3 * cast(triples as numeric) +
 			      4 * cast(homeruns as numeric)) / cast(at_bats as numeric),3)) -
 		  (round(cast(hits as numeric) / 
-	           cast(at_bats as numeric),3)) as iso
-from for_calculations;
-
-alter table re_batting.batting_stats_per_inning_base_out_state
-add column baseball_era text;
-
-update re_batting.batting_stats_per_inning_base_out_state
-set baseball_era = case
+	           cast(at_bats as numeric),3)) as iso,
+      case
                      when cast(season as int) >= 1912 and cast(season as int) <= 1919 then 'Dead-Ball Era'
 					 when cast(season as int) >= 1920 and cast(season as int) <= 1941 then 'Live-Ball Era'
 					 when cast(season as int) >= 1942 and cast(season as int) <= 1960 then 'Integration Era'
@@ -380,4 +409,5 @@ set baseball_era = case
 					 when cast(season as int) >= 1977 and cast(season as int) <= 1993 then 'Free Agency Era'
 					 when cast(season as int) >= 1994 and cast(season as int) <= 2005 then 'Steroid Era'
 					 when cast(season as int) >= 2006 then 'Modern Era'
-				   end;
+				   end as baseball_era
+from for_calculations;
