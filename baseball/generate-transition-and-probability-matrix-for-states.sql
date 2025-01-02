@@ -1,32 +1,26 @@
---By using the filter() function from the dplyr package, we focus on plays where there is a change in the state or in the number of runs scored. 
---By another application of filter(), we restrict attention to complete innings where there are three outs and where there is a batting event; 
---the new dataset is called retro2016_complete. Here non-batting plays such as steals, caught stealing, wild pitches, and passed balls are ignored. 
---There is obviously some consequence of removing these non-batting plays from the viewpoint of run production, and this issue is discussed later in this chapter.
---In our definition of the new_state variable, we recorded the runner locations when there were three outs. 
---The runner locations don’t matter, so we recode new_state to always have the value 3 when the number of outs is equal to 3. 
---The str_replace() function replaces the regular expression [0-1]{3} 3—which matches any three character binary string followed by a space and a 3—with 3.
-create table simulations.full_transition_matrix_2016 as
-with retro2016 as (
+create table run_expectancy.full_transition_matrix as
+with retro as (
   select *,
          case 
          	when new_state like '% 3' then '3'
             else new_state
          end as new_state_mod
-  from run_expectancy.full_rv_1912_2023 fr 
-  where season = '2016' and 
-        (state != new_state or runs_scored > 0) and 
+  from run_expectancy.full_rv_1912_2024 fr 
+  where (state != new_state or runs_scored > 0) and 
         (outs_inning = 3 and bat_event_fl = 'T')
 ),
 --Computing transition matrix
 init_transitions as (
-  select state,
+  select season,
+         state,
          new_state_mod as new_state,
          count(*) as n_transitions
-  from retro2016 
-  group by state, new_state_mod
+  from retro 
+  group by season, state, new_state_mod
 ),
 long_transitions as (
-   select state,
+   select season,
+       state,
        max(case when new_state = '000 0' then n_transitions else 0 end) as "000 0",
        max(case when new_state = '000 1' then n_transitions else 0 end) as "000 1",
        max(case when new_state = '000 2' then n_transitions else 0 end) as "000 2",
@@ -53,7 +47,7 @@ long_transitions as (
        max(case when new_state = '111 2' then n_transitions else 0 end) as "111 2",
        max(case when new_state = '3' then n_transitions else 0 end) as "3"
 from init_transitions
-group by state
+group by season, state
 ),
 total_transitions as (
   select *,
@@ -63,7 +57,8 @@ total_transitions as (
   from long_transitions
   ),
 final_probabilities as (
-  select state,
+  select season,
+         state,
          total_state_transitions,
          "000 0",
          "000 1",
@@ -118,12 +113,9 @@ final_probabilities as (
   from total_transitions
   )
 select *
-from final_probabilities
-union all
-select *
-from run_expectancy.state_3_outs so ;
+from final_probabilities;
 
-create table simulations.prob_matrix_2016 as
+create table run_expectancy.prob_matrix as
 select state,
        "Pct 000 0",
        "Pct 000 1",
@@ -150,18 +142,17 @@ select state,
         "Pct 111 1",
         "Pct 111 2",
         "Pct 3"
-from simulations.full_transition_matrix_2016 ftm ;
+from run_expectancy.full_transition_matrix ftm ;
 
-create table simulations.runs_matrix_2016 as
+create table run_expectancy.runs_matrix as
 with runs_before as (
   select distinct state,
          cast(substring(state from 1 for 1) as integer) +
          cast(substring(state from 2 for 1) as integer) +
          cast(substring(state from 3 for 1) as integer) +
          cast(substring(state from 5 for 1) as integer) + 1 as runs_before
-  from run_expectancy.full_rv_1912_2023 fr 
-  where season = '2016' and 
-        (state != new_state or runs_scored > 0) and 
+  from run_expectancy.full_rv_1912_2024 fr 
+  where (state != new_state or runs_scored > 0) and 
         (outs_inning = 3 and bat_event_fl = 'T')
 ),
 runs_after as (
@@ -170,9 +161,8 @@ runs_after as (
          cast(substring(new_state from 2 for 1) as integer) +
          cast(substring(new_state from 3 for 1) as integer) +
          cast(substring(new_state from 5 for 1) as integer) as runs_after
-  from run_expectancy.full_rv_1912_2023 fr 
-  where season = '2016' and 
-        (state != new_state or runs_scored > 0) and 
+  from run_expectancy.full_rv_1912_2024 fr 
+  where (state != new_state or runs_scored > 0) and 
         (outs_inning = 3 and bat_event_fl = 'T')
 ),
 runs as (

@@ -1,7 +1,7 @@
 create table run_expectancy.events_rv_by_bo_state as
 with basis as (
   select *
-  from run_expectancy.full_rv_1912_2023
+  from run_expectancy.full_rv_1912_2024
   where inn_ct <= 9.0 and not (inn_ct = 9.0 and bat_home_id = '1')
 ),
 homeruns as (
@@ -360,7 +360,7 @@ re as (
          avg(rv_start) as rv_start,
 		 avg(rv_end) as rv_end,
 		 avg(run_value) as run_value
-  from run_expectancy.full_rv_1912_2023
+  from run_expectancy.full_rv_1912_2024
   group by season, "state", event_cd
 ),
 cleaned_with_re as (

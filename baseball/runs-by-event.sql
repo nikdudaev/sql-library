@@ -1,7 +1,7 @@
 create table run_expectancy.events_run_value as
 with basis as (
   select *
-  from run_expectancy.full_rv_1912_2023
+  from run_expectancy.full_rv_1912_2024
   where inn_ct <= 9.0 and not (inn_ct = 9.0 and bat_home_id = '1')
 ),
 homeruns as (
