@@ -293,9 +293,9 @@ order by season, cast(inn_ct as text), state, count(*) desc;
 create table gdp_article_2017_2024.avg_value_of_out as
 select *
 from run_expectancy.events_run_value erv 
-where erv."Event" = 'Out' and cast(season as integer) > 2016;
+where erv."Event" = 'Out' and cast("Season" as integer) > 2016;
 
 create table gdp_article_2017_2024.avg_value_of_out_by_base_state as
 select *
 from run_expectancy.events_rv_by_bo_state erbbs 
-where erbbs."Event" = 'Out' and cast(season as integer) > 2016;
+where erbbs."Event" = 'Out' and cast("Season" as integer) > 2016;
