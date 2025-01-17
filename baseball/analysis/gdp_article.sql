@@ -1,3 +1,136 @@
+-- Creating separate events source table joined with games logs to identify day/night games
+create table gdp_article_2017_2024.events_source_2017_2024 as
+with game_details as (
+select gl.game_id ,
+       gl.game_dy ,
+       gl.daynight_park_cd 
+from retrosheet.game_logs gl 
+where cast(left(game_dt,4) as integer) > 2016
+),
+events as (
+select game_id,
+       away_team_id,
+       home_team_id,
+       inn_ct,
+       bat_home_id,
+       away_score_ct,
+       home_score_ct,
+       bat_id,
+       bat_hand_cd,
+       pit_hand_cd,
+       event_tx,
+       leadoff_fl,
+       ph_fl,
+       bat_lineup_id,
+       event_cd,
+       dp_fl,
+       fld_cd,
+       bunt_fl,
+       bat_team_id,
+       inn_end_fl,
+       pit_start_fl,
+       game_date,
+       season,
+       runs_scored,
+       bases,
+       state,
+       new_bases,
+       new_state,
+       rv_start,
+       rv_end,
+       run_value
+from run_expectancy.full_rv_1912_2024 fr
+where cast(season as integer) > 2016
+),
+merged as (
+  select ev.*,
+         gd.game_dy,
+         gd.daynight_park_cd
+  from events ev
+  left join game_details gd
+  on ev.game_id = gd.game_id
+)
+select *
+from merged;
+
+-- Calculating GDP counts for all teams and for the Yankees separately: 
+--   totals
+--   day/night
+--   week day
+--   home/away
+--   month
+--   batters
+
+-- GDP by day/night games
+create table gdp_article_2017_2024.nya_gdps_in_day_night_games as
+with gdp_count_day_night_long as (
+  select season,
+         bat_team_id,
+         daynight_park_cd,
+         count(*) day_night_offensive_gdps
+  from gdp_article_2017_2024.events_source_2017_2024
+  where event_tx like '%GDP%' and bat_team_id = 'NYA'
+  group by season, bat_team_id, daynight_park_cd
+),
+gdp_count_day_night_wide as (
+  select season,
+         bat_team_id,
+         max(case when daynight_park_cd = 'D' then day_night_offensive_gdps else 0 end) as day_games_offensive_gdps,
+         max(case when daynight_park_cd = 'N' then day_night_offensive_gdps else 0 end) as night_games_offensive_gdps
+  from gdp_count_day_night_long
+  group by season, bat_team_id
+),
+away_games_daynight_counts_long as (
+ select left(game_dt, 4) as season,
+        away_team_id,
+        daynight_park_cd,
+        count(*) as away_games
+ from retrosheet.game_logs
+ where cast(left(game_dt, 4) as integer) > 2016 and away_team_id = 'NYA'
+ group by left(game_dt, 4), away_team_id, daynight_park_cd
+),
+home_games_daynight_counts_long as (
+ select left(game_dt, 4) as season,
+        home_team_id,
+        daynight_park_cd,
+        count(*) as home_games
+ from retrosheet.game_logs
+ where cast(left(game_dt, 4) as integer) > 2016 and home_team_id = 'NYA'
+ group by left(game_dt, 4), home_team_id, daynight_park_cd
+),
+away_games_daynight_counts_wide as (
+ select season,
+        away_team_id,
+        max(case when daynight_park_cd = 'D' then away_games else 0 end) as away_day_games_count,
+        max(case when daynight_park_cd = 'N' then away_games else 0 end) as away_night_games_count
+ from away_games_daynight_counts_long
+ group by season, away_team_id
+),
+home_games_daynight_counts_wide as (
+ select season,
+        home_team_id,
+        max(case when daynight_park_cd = 'D' then home_games else 0 end) as home_day_games_count,
+        max(case when daynight_park_cd = 'N' then home_games else 0 end) as home_night_games_count
+ from home_games_daynight_counts_long
+ group by season, home_team_id
+),
+final_tbl as (
+  select gcdnw.season,
+         round(cast(gcdnw.day_games_offensive_gdps as numeric) / cast((agdcw.away_day_games_count + hgdcw.home_day_games_count) as numeric),2) as gdps_per_day_game,
+         round(cast(gcdnw.night_games_offensive_gdps as numeric) / cast((agdcw.away_night_games_count + hgdcw.home_night_games_count) as numeric),2) as gdps_per_night_game,
+         round((cast(gcdnw.day_games_offensive_gdps as numeric) + cast(gcdnw.night_games_offensive_gdps as numeric)) / cast((agdcw.away_day_games_count + hgdcw.home_day_games_count + agdcw.away_night_games_count + hgdcw.home_night_games_count) as numeric),2) as gdps_per_game
+  from gdp_count_day_night_wide gcdnw
+  left join away_games_daynight_counts_wide agdcw
+  on gcdnw.season = agdcw.season and gcdnw.bat_team_id = agdcw.away_team_id
+  left join home_games_daynight_counts_wide hgdcw
+  on gcdnw.season = hgdcw.season and gcdnw.bat_team_id = hgdcw.home_team_id
+)
+select *
+from final_tbl
+where season != '2020';
+
+
+
 -- GDP Run Value statistics
 create table gdp_article_2017_2024.gdp_rv_by_state as
 with basis as (
